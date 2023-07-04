@@ -1,10 +1,11 @@
+const fs = require('fs');
 const Food = require("../models/food.model");
 
 const MulterUpload = require("../utils/multerUpload");
 
 exports.createFood = async (req, res) => {
   try {
-    const upload = new MulterUpload("public/food","jot-food").upload();
+    const upload = new MulterUpload("public/food", "jot-food").upload();
     upload.single("image")(req, res, async (err) => {
       if (err) {
         return res.status(400).json({ error: err.message });
@@ -12,28 +13,20 @@ exports.createFood = async (req, res) => {
 
       const { name, ingredients, price, options, category } = req.body;
 
+      let parsedOptions = JSON.parse(options);
 
-      let parsedOptions = JSON.parse(options)
-
-
-      if (
-        !name ||
-        !ingredients ||
-        !price ||
-        !options ||
-        !category
-      ) {
+      if (!name || !ingredients || !price || !options || !category) {
         return res.status(400).json({ error: "Missing required fields" });
       }
 
-      const image = req.file ? req.file.filename : 'default-food.png';
+      const image = req.file ? req.file.filename : "default-food.png";
 
       const foodItem = new Food({
         name,
-        image:`/food/${image}`,
+        image: `/food/${image}`,
         ingredients,
         price,
-        options:parsedOptions,
+        options: parsedOptions,
         category,
       });
 
@@ -54,14 +47,13 @@ exports.getAllFoods = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-     const { search } = req.query;
+    const { search } = req.query;
 
-     const query = {};
+    const query = {};
 
-     if (search) {
-       query.name = { $regex: search, $options: "i" }; 
-     }
-
+    if (search) {
+      query.name = { $regex: search, $options: "i" };
+    }
 
     const totalItems = await Food.countDocuments();
     const totalPages = Math.ceil(totalItems / limit);
@@ -102,41 +94,61 @@ exports.getFoodById = async (req, res) => {
 
 exports.updateFood = async (req, res) => {
   try {
-    const { id } = req.params;
-    if (!id) {
-      return res.status(400).json({ error: "Missing required parameter: id" });
-    }
+    const upload = new MulterUpload("public/food", "jot-food").upload();
+    upload.single("image")(req, res, async (err) => {
+      if (err) {
+        return res.status(400).json({ error: err.message });
+      }
 
-    const { name, image, ingredients, price, options, category } =
-      req.body;
-    if (alt, 
-      !name ||
-      !image ||
-      !ingredients ||
-      !price ||
-      !options ||
-      !category
-    ) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
+      const { id } = req.params;
+      if (!id) {
+        return res
+          .status(400)
+          .json({ error: "Missing required parameter: id" });
+      }
 
-    const updatedFoodItem = await Food.findByIdAndUpdate(
-      id,
-      { name, image, ingredients, price, options, category },
-      { new: true }
-    );
-    if (!updatedFoodItem) {
-      return res.status(404).json({ error: "Food  not found" });
-    }
+      const { name, ingredients, price, options, category } = req.body;
 
-    res.json({
-      result: updatedFoodItem,
-      message: "Food updated successfully",
+      let updateFields = {};
+
+
+      if (req.file) {
+
+        const existingFoodItem = await Food.findById(id);
+        if (
+          existingFoodItem.image &&
+          existingFoodItem.image !== "default-food.png"
+        ) {
+          const imagePath = path.join("public", existingFoodItem.image);
+          fs.unlinkSync(imagePath);
+        }
+
+        updateFields.image = `/food/${req.file.filename}`;
+      }
+
+      if (name) updateFields.name = name;
+      if (ingredients) updateFields.ingredients = ingredients;
+      if (price) updateFields.price = price;
+      if (options) updateFields.options = options;
+      if (category) updateFields.category = category;
+
+      const updatedFoodItem = await Food.findByIdAndUpdate(id, updateFields, {
+        new: true,
+      });
+      if (!updatedFoodItem) {
+        return res.status(404).json({ error: "Food not found" });
+      }
+
+      res.json({
+        result: updatedFoodItem,
+        message: "Food updated successfully",
+      });
     });
   } catch (error) {
-    res.status(500).json({ error: "Failed to update food " });
+    res.status(500).json({ error: "Failed to update food" });
   }
 };
+
 
 exports.deleteFoodItem = async (req, res) => {
   try {
