@@ -114,16 +114,6 @@ exports.updateFood = async (req, res) => {
 
 
       if (req.file) {
-
-        const existingFoodItem = await Food.findById(id);
-        if (
-          existingFoodItem.image &&
-          existingFoodItem.image !== "/food/default-food.png"
-        ) {
-          const imagePath = path.join("public", existingFoodItem.image);
-          fs.unlinkSync(imagePath);
-        }
-
         updateFields.image = `/food/${req.file.filename}`;
       }
 
