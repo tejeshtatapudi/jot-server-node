@@ -54,10 +54,19 @@ exports.getAllFoods = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
+     const { search } = req.query;
+
+     const query = {};
+
+     if (search) {
+       query.name = { $regex: search, $options: "i" }; 
+     }
+
+
     const totalItems = await Food.countDocuments();
     const totalPages = Math.ceil(totalItems / limit);
 
-    const foodItems = await Food.find({}).skip(skip).limit(limit);
+    const foodItems = await Food.find(query).skip(skip).limit(limit);
 
     res.json({
       totalPages,
